@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.geo.springboot.oauth.app.clients.UsuarioFeignClient;
 import com.geo.springboot.usuarios.commons.app.models.entity.Usuario;
 
+import brave.Tracer;
 import feign.FeignException;
 
 /*
@@ -32,6 +33,9 @@ public class UsuarioService implements UserDetailsService, IUsuarioService {
 	 */
 	@Autowired
 	private UsuarioFeignClient client;
+	
+	@Autowired
+	private Tracer tracer;
 	
 	/*
 	 * Método sobrescrito propio de spring framework que permite obtener el usuario por username
@@ -60,9 +64,10 @@ public class UsuarioService implements UserDetailsService, IUsuarioService {
 					true, 
 					authorities);
 		} catch (FeignException e) {
-			log.error("Error en el login, No existe el usuario {} en el sistema", username);
-			throw new UsernameNotFoundException(
-					String.format("Error en el login, No existe el usuario %s en el sistema", username));
+			String errorMessage = String.format("Error en el login, No existe el usuario %s en el sistema", username);
+			log.error(errorMessage);
+			tracer.currentSpan().tag("error.mensaje", errorMessage + ":" + e.getMessage());
+			throw new UsernameNotFoundException(errorMessage);
 		}
 	}
 
